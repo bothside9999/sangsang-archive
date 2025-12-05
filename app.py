@@ -201,10 +201,7 @@ SECRETS_PATH = BASE_DIR / "secrets.json"
 IMAGE_DIR = BASE_DIR / "images"
 
 # 디버깅: 경로 정보 출력 (문제가 해결되면 삭제 가능)
-if not SECRETS_PATH.exists():
-    st.error(f"🚨 인증 파일을 찾을 수 없습니다!")
-    st.code(f"찾는 위치: {SECRETS_PATH}\n존재 여부: {SECRETS_PATH.exists()}")
-    st.info(f"현재 폴더 파일 목록: {[f.name for f in BASE_DIR.iterdir()]}")
+
 
 if not IMAGE_DIR.exists():
     IMAGE_DIR.mkdir(exist_ok=True)
