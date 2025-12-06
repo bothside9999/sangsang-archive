@@ -265,7 +265,7 @@ def check_login(username, password):
     return False
 
 def login_page():
-    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🔒 충남 교육청 업무 아카이브 로그인</h1>", unsafe_allow_html=True)
+    st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🔒 상상이룸 업무 아카이브 로그인</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>지역명(ID)을 선택하고 비밀번호를 입력해주세요.</p>", unsafe_allow_html=True)
     
     c1, c2, c3 = st.columns([1, 2, 1])
