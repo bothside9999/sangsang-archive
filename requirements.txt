@@ -1,6 +1,7 @@
 streamlit
-gspread
-oauth2client
 pandas
-streamlit-agraph
+gspread
 google-api-python-client
+google-auth
+streamlit-agraph
+oauth2client

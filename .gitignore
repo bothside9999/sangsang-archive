@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Streamlit
+.streamlit/secrets.toml
+# .streamlit/config.toml # config.toml은 올려도 됨 (테마 설정 등). secrets.toml만 절대 금지.
+
+# Sensitive Credentials
+secrets.json
+client_secret.json
+service_account.json
+*.pem
+
+# Environment variables
+.env
+.venv
+env/
+venv/
