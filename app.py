@@ -225,8 +225,8 @@ import time
 # -----------------------------------------------------------------------------
 
 def get_manager():
-    # 쿠키 매니저 초기화 (새로운 키 사용으로 캐시 충돌 방지)
-    return stx.CookieManager(key="auth_manager")
+    # 쿠키 매니저 초기화
+    return stx.CookieManager(key="session_manager")
 
 def load_auth_config():
     """
@@ -291,8 +291,9 @@ def login_page(cookie_manager):
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     
-                    # 쿠키 저장 (7일 유지, UTC 기준)
-                    cookie_manager.set("sangsang_user", username, expires_at=datetime.utcnow() + timedelta(days=7))
+                    # 쿠키 저장 (세션 쿠키로 설정 - 브라우저 종료 시 삭제되지만, 새로고침 시 유지됨)
+                    # 만료 시간을 지정하지 않으면 브라우저/서버 시간차 문제(Timezone)를 원천 차단 가능
+                    cookie_manager.set("sangsang_user", username)
                     
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
@@ -1289,17 +1290,11 @@ def main():
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
+    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     if not st.session_state.logged_in:
         try:
-            # 브라우저 쿠키 로딩 대기
-            if "cookie_checked" not in st.session_state:
-                with st.spinner("사용자 정보 확인 중... (잠시만 기다려주세요)"):
-                    time.sleep(1.0) # 충분한 대기 시간 확보
-                    st.session_state.cookie_checked = True
-            
-            # 특정 쿠키 명시적 확인
+            # 즉시 쿠키 및 사용자 확인
             cookie_user = cookie_manager.get("sangsang_user")
-            
             if cookie_user and cookie_user in ALLOWED_USERS:
                 st.session_state.logged_in = True
                 st.session_state.username = cookie_user
