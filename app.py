@@ -461,12 +461,27 @@ def fetch_sheet_data():
             
         all_values = sheet.get_all_values()
         
-        # 데이터가 아예 없는 경우 (헤더 복구)
-        if len(all_values) < 1:
+        # 1. 데이터가 아예 없는 경우 (헤더 복구)
+        if not all_values:
             sheet.append_row(EXPECTED_COLS)
             return empty_df
+
+        # 2. 첫 번째 줄이 헤더가 아닌 경우 (데이터가 1행부터 시작하는 경우)
+        # 간단한 검증: 첫 번째 컬럼이 '작성일'인지 확인
+        first_row = all_values[0]
+        is_header_valid = False
+        if len(first_row) >= len(EXPECTED_COLS):
+             # 컬럼명이 대략 맞는지 확인
+             if str(first_row[0]).strip() == "작성일":
+                 is_header_valid = True
+        
+        if not is_header_valid:
+            # 헤더 강제 삽입 (1행에)
+            sheet.insert_row(EXPECTED_COLS, index=1)
+            # 데이터 다시 로드
+            all_values = sheet.get_all_values()
             
-        # 헤더만 있고 데이터는 없는 경우
+        # 3. 헤더만 있고 데이터는 없는 경우
         if len(all_values) < 2:
              return empty_df
 
