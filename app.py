@@ -1202,8 +1202,13 @@ def main():
     
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     if not st.session_state.logged_in:
-        time.sleep(0.1) # 쿠키 로드 대기
-        cookie_user = cookie_manager.get(cookie="sangsang_user")
+        # 새로고침 직후 쿠키를 읽어오기 위해 잠시 대기 (브라우저 응답 대기)
+        time.sleep(0.5)
+        
+        # 모든 쿠키를 가져와서 확인 (get 개별 호출보다 안정적일 수 있음)
+        cookies = cookie_manager.get_all()
+        cookie_user = cookies.get("sangsang_user") if cookies else None
+        
         if cookie_user and cookie_user in ALLOWED_USERS:
             st.session_state.logged_in = True
             st.session_state.username = cookie_user
