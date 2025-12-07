@@ -19,6 +19,7 @@ from streamlit_agraph import agraph, Node, Edge, Config
 st.set_page_config(
     page_title="업무 아카이빙 시스템",
     page_icon="📂",
+    layout="wide",
     initial_sidebar_state="expanded"
 )
 
@@ -28,6 +29,12 @@ st.set_page_config(
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap');
+    
+    /* Center Forms in Wide Layout */
+    [data-testid="stForm"] {
+        max-width: 900px;
+        margin: 0 auto;
+    }
 
     /* Global Settings */
     :root {
@@ -294,6 +301,9 @@ def login_page(cookie_manager):
                     # 쿠키 저장 (세션 쿠키로 설정 - 브라우저 종료 시 삭제되지만, 새로고침 시 유지됨)
                     # 만료 시간을 지정하지 않으면 브라우저/서버 시간차 문제(Timezone)를 원천 차단 가능
                     cookie_manager.set("sangsang_user", username)
+                    
+                    # 브라우저가 쿠키를 처리할 시간을 확보 (매우 중요)
+                    time.sleep(1)
                     
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
@@ -1288,18 +1298,32 @@ def main():
     cookie_manager = get_manager()
     
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
-    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
-    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
-    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     if not st.session_state.logged_in:
         try:
-            # 즉시 쿠키 및 사용자 확인
-            cookie_user = cookie_manager.get("sangsang_user")
+            # 모든 쿠키 가져오기
+            cookies = cookie_manager.get_all()
+            cookie_user = cookies.get("sangsang_user") if cookies else None
+
             if cookie_user and cookie_user in ALLOWED_USERS:
+                # 쿠키 발견 -> 로그인 처리
                 st.session_state.logged_in = True
                 st.session_state.username = cookie_user
                 st.rerun()
-        except:
+            else:
+                # 쿠키가 감지되지 않음 -> 로딩 지연일 수 있으므로 재시도 (최대 2회)
+                if "auth_retry" not in st.session_state:
+                     st.session_state.auth_retry = 0
+                
+                if st.session_state.auth_retry < 2:
+                     st.session_state.auth_retry += 1
+                     # 브라우저 동기화를 위해 잠시 대기 후 리런
+                     time.sleep(1)
+                     st.rerun()
+                else:
+                     # 재시도 종료 (로그인 페이지 표시)
+                     st.session_state.auth_retry = 0
+        except Exception as e:
+             # 에러 발생 시 재시도 없이 로그인 페이지로
              pass
 
     # 2. 로그인 화면 표시
