@@ -820,7 +820,7 @@ def view_write(df):
         c1, c2 = st.columns(2)
         with c1:
             years_options = [str(y) for y in range(2023, 2031)]
-            selected_years = st.multiselect("학년도 (다중 선택)", years_options, default=["2024"])
+            selected_years = st.multiselect("학년도 (다중 선택)", years_options)
         with c2:
             months_options = [f"{i}월" for i in range(1, 13)]
             selected_months = st.multiselect("업무 시기 (다중 선택)", months_options)
@@ -1213,7 +1213,19 @@ def view_graph(df):
              navigate_to('detail', return_value)
 
 def main():
-    # 로그인 체크
+    # 0. 쿠키 매니저 초기화 (모든 페이지 로드 시 필수)
+    cookie_manager = get_manager()
+    
+    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
+    if not st.session_state.logged_in:
+        time.sleep(0.1) # 쿠키 로드 대기
+        cookie_user = cookie_manager.get(cookie="sangsang_user")
+        if cookie_user and cookie_user in ALLOWED_USERS:
+            st.session_state.logged_in = True
+            st.session_state.username = cookie_user
+            st.rerun()
+
+    # 2. 로그인 화면 표시
     if not st.session_state.logged_in:
         login_page()
         return
