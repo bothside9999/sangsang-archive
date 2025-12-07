@@ -225,10 +225,8 @@ import time
 # -----------------------------------------------------------------------------
 
 def get_manager():
-    # 세션 스테이트를 사용하여 쿠키 매니저 인스턴스 유지 (새로고침 시 초기화 방지)
-    if "cookie_manager_obj" not in st.session_state:
-        st.session_state.cookie_manager_obj = stx.CookieManager(key="cookie_manager")
-    return st.session_state.cookie_manager_obj
+    # 쿠키 매니저 초기화 (새로운 키 사용으로 캐시 충돌 방지)
+    return stx.CookieManager(key="auth_manager")
 
 def load_auth_config():
     """
@@ -293,8 +291,8 @@ def login_page(cookie_manager):
                     st.session_state.logged_in = True
                     st.session_state.username = username
                     
-                    # 쿠키 저장 (7일 유지)
-                    cookie_manager.set("sangsang_user", username, expires_at=datetime.now() + timedelta(days=7))
+                    # 쿠키 저장 (7일 유지, UTC 기준)
+                    cookie_manager.set("sangsang_user", username, expires_at=datetime.utcnow() + timedelta(days=7))
                     
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
@@ -1289,18 +1287,25 @@ def main():
     cookie_manager = get_manager()
     
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
+    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
+    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     if not st.session_state.logged_in:
-        # 새로고침 직후 쿠키를 읽어오기 위해 잠시 대기 (브라우저 응답 대기)
-        time.sleep(0.5)
-        
-        # 모든 쿠키를 가져와서 확인 (get 개별 호출보다 안정적일 수 있음)
-        cookies = cookie_manager.get_all()
-        cookie_user = cookies.get("sangsang_user") if cookies else None
-        
-        if cookie_user and cookie_user in ALLOWED_USERS:
-            st.session_state.logged_in = True
-            st.session_state.username = cookie_user
-            st.rerun()
+        try:
+            # 브라우저 쿠키 로딩 대기
+            if "cookie_checked" not in st.session_state:
+                with st.spinner("사용자 정보 확인 중... (잠시만 기다려주세요)"):
+                    time.sleep(1.0) # 충분한 대기 시간 확보
+                    st.session_state.cookie_checked = True
+            
+            # 특정 쿠키 명시적 확인
+            cookie_user = cookie_manager.get("sangsang_user")
+            
+            if cookie_user and cookie_user in ALLOWED_USERS:
+                st.session_state.logged_in = True
+                st.session_state.username = cookie_user
+                st.rerun()
+        except:
+             pass
 
     # 2. 로그인 화면 표시
     if not st.session_state.logged_in:
