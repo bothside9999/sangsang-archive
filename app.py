@@ -224,9 +224,9 @@ import time
 # Authentication Logic
 # -----------------------------------------------------------------------------
 
-@st.cache_resource
+# @st.cache_resource # Removed to fix CachedWidgetWarning
 def get_manager():
-    return stx.CookieManager()
+    return stx.CookieManager(key="cookie_manager")
 
 def load_auth_config():
     """
