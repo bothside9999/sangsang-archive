@@ -231,25 +231,21 @@ def load_auth_config():
     """
     Load authentication configuration from st.secrets.
     """
-    # 기본값: 비밀번호 없음 (Secrets 설정 필수)
-    default_users = [
-        "천안", "아산", "당진", "서산", "태안", "홍성", "예산", "공주", 
-        "청양", "보령", "부여", "서천", "논산", "계룡", "금산"
-    ]
-    
+    # 기본값 설정 (Secrets 로드 실패 시 대비, 그러나 실제론 Secrets가 우선)
     config = {
-        "users": default_users,
-        "password": None # 코드가 공개되어도 안전하도록 기본 비밀번호 제거
+        "users": [],
+        "password": None
     }
 
     try:
-        # Load password
-        if "app_password" in st.secrets:
-            config["password"] = st.secrets["app_password"]
-        
-        # Load allowed users
-        if "allowed_users" in st.secrets:
-            config["users"] = st.secrets["allowed_users"]
+        if "general" in st.secrets:
+            # Load password
+            if "app_password" in st.secrets["general"]:
+                config["password"] = st.secrets["general"]["app_password"]
+            
+            # Load allowed users
+            if "allowed_users" in st.secrets["general"]:
+                config["users"] = st.secrets["general"]["allowed_users"]
             
     except (FileNotFoundError, KeyError, AttributeError):
         pass
