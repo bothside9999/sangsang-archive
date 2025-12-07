@@ -1295,33 +1295,41 @@ def main():
     cookie_manager = get_manager()
     
     # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
+    # 1. 자동 로그인 체크 (로그인 상태가 아닐 때만)
     if not st.session_state.logged_in:
-        try:
-            # 모든 쿠키 가져오기
-            cookies = cookie_manager.get_all()
-            cookie_user = cookies.get("sangsang_user") if cookies else None
+        # 최초 접속/새로고침 시에만 쿠키 확인 반복 시도 (로그인 버튼 클릭 시 중복 실행 방지)
+        if 'auth_check_completed' not in st.session_state:
+            st.session_state.auth_check_completed = False
 
-            if cookie_user and cookie_user in ALLOWED_USERS:
-                # 쿠키 발견 -> 로그인 처리
-                st.session_state.logged_in = True
-                st.session_state.username = cookie_user
-                st.rerun()
-            else:
-                # 쿠키가 감지되지 않음 -> 로딩 지연일 수 있으므로 재시도 (최대 2회)
-                if "auth_retry" not in st.session_state:
-                     st.session_state.auth_retry = 0
-                
-                if st.session_state.auth_retry < 2:
-                     st.session_state.auth_retry += 1
-                     # 브라우저 동기화를 위해 잠시 대기 후 리런
-                     time.sleep(1)
-                     st.rerun()
+        if not st.session_state.auth_check_completed:
+            try:
+                # 모든 쿠키 가져오기
+                cookies = cookie_manager.get_all()
+                cookie_user = cookies.get("sangsang_user") if cookies else None
+
+                if cookie_user and cookie_user in ALLOWED_USERS:
+                    # 쿠키 발견 -> 로그인 처리
+                    st.session_state.logged_in = True
+                    st.session_state.username = cookie_user
+                    st.session_state.auth_check_completed = True
+                    st.rerun()
                 else:
-                     # 재시도 종료 (로그인 페이지 표시)
-                     st.session_state.auth_retry = 0
-        except Exception as e:
-             # 에러 발생 시 재시도 없이 로그인 페이지로
-             pass
+                    # 쿠키가 감지되지 않음 -> 로딩 지연일 수 있으므로 재시도 (최대 2회)
+                    if "auth_retry" not in st.session_state:
+                         st.session_state.auth_retry = 0
+                    
+                    if st.session_state.auth_retry < 2:
+                         st.session_state.auth_retry += 1
+                         # 브라우저 동기화를 위해 잠시 대기 후 리런
+                         time.sleep(1)
+                         st.rerun()
+                    else:
+                         # 재시도 종료 (로그인 페이지 표시)
+                         st.session_state.auth_retry = 0
+                         st.session_state.auth_check_completed = True
+            except Exception as e:
+                 # 에러 발생 시 재시도 없이 진행
+                 st.session_state.auth_check_completed = True
 
     # 2. 로그인 화면 표시
     if not st.session_state.logged_in:
