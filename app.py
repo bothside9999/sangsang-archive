@@ -268,26 +268,12 @@ def check_login(username, password):
         return True
     return False
 
-def check_cookie_login():
-    """쿠키를 확인하여 자동 로그인"""
-    cookie_manager = get_manager()
-    
-    # 쿠키 매니저 초기화 대기
-    if "cookie_manager_init" not in st.session_state:
-        st.session_state["cookie_manager_init"] = True
-        time.sleep(0.1)
-        
-    cookie_user = cookie_manager.get(cookie="sangsang_user")
-    if cookie_user and cookie_user in ALLOWED_USERS:
-        st.session_state.logged_in = True
-        st.session_state.username = cookie_user
-        return True
-    return False
 
-def login_page():
-    # 쿠키 확인 먼저 시도
-    if check_cookie_login():
-        st.rerun()
+
+def login_page(cookie_manager):
+    # 이미 로그인 상태라면 패스 (main에서 처리했으므로 여기선 이중 체크 불필요)
+    if st.session_state.logged_in:
+        return
 
     st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🔒 상상이룸 업무 아카이브 로그인</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>지역명(ID)을 선택하고 비밀번호를 입력해주세요.</p>", unsafe_allow_html=True)
@@ -306,7 +292,6 @@ def login_page():
                     st.session_state.username = username
                     
                     # 쿠키 저장 (7일 유지)
-                    cookie_manager = get_manager()
                     cookie_manager.set("sangsang_user", username, expires_at=datetime.now().timestamp() + 86400 * 7)
                     
                     st.success(f"환영합니다, {username}님!")
@@ -633,7 +618,7 @@ def process_tags_input(tag_input):
     
     return " ".join(tags)
 
-def view_list(df):
+def view_list(df, cookie_manager):
     st.title("📂 업무 지식 목록")
     
     # ---------------------------
@@ -644,7 +629,6 @@ def view_list(df):
         if st.button("로그아웃"):
             st.session_state.logged_in = False
             # 쿠키 삭제
-            cookie_manager = get_manager()
             cookie_manager.delete("sangsang_user")
             st.rerun()
             
@@ -1227,14 +1211,14 @@ def main():
 
     # 2. 로그인 화면 표시
     if not st.session_state.logged_in:
-        login_page()
+        login_page(cookie_manager)
         return
 
     # 데이터 로드
     df = fetch_sheet_data()
     
     if st.session_state.current_view == 'list':
-        view_list(df)
+        view_list(df, cookie_manager)
     elif st.session_state.current_view == 'write':
         view_write(df)
     elif st.session_state.current_view == 'detail':
