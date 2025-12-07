@@ -217,15 +217,16 @@ if not IMAGE_DIR.exists():
 SECRETS_PATH = str(SECRETS_PATH)
 IMAGE_DIR = str(IMAGE_DIR)
 
+import extra_streamlit_components as stx
+import time
+
 # -----------------------------------------------------------------------------
 # Authentication Logic
 # -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# Authentication Logic
-# -----------------------------------------------------------------------------
-# -----------------------------------------------------------------------------
-# Authentication Logic
-# -----------------------------------------------------------------------------
+
+@st.cache_resource(experimental_allow_widgets=True)
+def get_manager():
+    return stx.CookieManager()
 
 def load_auth_config():
     """
@@ -267,7 +268,27 @@ def check_login(username, password):
         return True
     return False
 
+def check_cookie_login():
+    """쿠키를 확인하여 자동 로그인"""
+    cookie_manager = get_manager()
+    
+    # 쿠키 매니저 초기화 대기
+    if "cookie_manager_init" not in st.session_state:
+        st.session_state["cookie_manager_init"] = True
+        time.sleep(0.1)
+        
+    cookie_user = cookie_manager.get(cookie="sangsang_user")
+    if cookie_user and cookie_user in ALLOWED_USERS:
+        st.session_state.logged_in = True
+        st.session_state.username = cookie_user
+        return True
+    return False
+
 def login_page():
+    # 쿠키 확인 먼저 시도
+    if check_cookie_login():
+        st.rerun()
+
     st.markdown("<h1 style='text-align: center; margin-top: 50px;'>🔒 상상이룸 업무 아카이브 로그인</h1>", unsafe_allow_html=True)
     st.markdown("<p style='text-align: center; color: gray;'>지역명(ID)을 선택하고 비밀번호를 입력해주세요.</p>", unsafe_allow_html=True)
     
@@ -283,6 +304,11 @@ def login_page():
                 if check_login(username, password):
                     st.session_state.logged_in = True
                     st.session_state.username = username
+                    
+                    # 쿠키 저장 (7일 유지)
+                    cookie_manager = get_manager()
+                    cookie_manager.set("sangsang_user", username, expires_at=datetime.now().timestamp() + 86400 * 7)
+                    
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
                 else:
@@ -617,6 +643,9 @@ def view_list(df):
         st.write(f"**로그인 정보**: {st.session_state.username}")
         if st.button("로그아웃"):
             st.session_state.logged_in = False
+            # 쿠키 삭제
+            cookie_manager = get_manager()
+            cookie_manager.delete("sangsang_user")
             st.rerun()
             
         st.divider()
