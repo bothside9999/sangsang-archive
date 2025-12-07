@@ -224,9 +224,11 @@ import time
 # Authentication Logic
 # -----------------------------------------------------------------------------
 
-# @st.cache_resource # Removed to fix CachedWidgetWarning
 def get_manager():
-    return stx.CookieManager(key="cookie_manager")
+    # 세션 스테이트를 사용하여 쿠키 매니저 인스턴스 유지 (새로고침 시 초기화 방지)
+    if "cookie_manager_obj" not in st.session_state:
+        st.session_state.cookie_manager_obj = stx.CookieManager(key="cookie_manager")
+    return st.session_state.cookie_manager_obj
 
 def load_auth_config():
     """
@@ -643,6 +645,39 @@ def process_tags_input(tag_input):
     
     return " ".join(tags)
 
+def get_all_unique_tags(df):
+    """
+    모든 글의 태그를 수집하여 유니크 리스트 반환
+    """
+    if df.empty or '태그' not in df.columns:
+        return []
+    
+    all_tags = set()
+    for t_str in df['태그']:
+        if t_str:
+            # 해시태그 단위로 분리 (#태그1 #태그2)
+            tags = t_str.split()
+            for t in tags:
+                t = t.strip()
+                if t: all_tags.add(t)
+    
+    return sorted(list(all_tags))
+
+def render_sidebar_header(cookie_manager):
+    with st.sidebar:
+        st.title("메뉴")
+        if st.button("🏠 홈으로", use_container_width=True):
+            navigate_to('list')
+            
+        st.write(f"**로그인 정보**: {st.session_state.username}")
+        if st.button("로그아웃", use_container_width=True):
+            st.session_state.logged_in = False
+            # 쿠키 삭제
+            cookie_manager.delete("sangsang_user")
+            st.rerun()
+            
+        st.divider()
+
 def view_list(df, cookie_manager):
     st.title("📂 업무 지식 목록")
     
@@ -650,14 +685,6 @@ def view_list(df, cookie_manager):
     # 사이드바 필터
     # ---------------------------
     with st.sidebar:
-        st.write(f"**로그인 정보**: {st.session_state.username}")
-        if st.button("로그아웃"):
-            st.session_state.logged_in = False
-            # 쿠키 삭제
-            cookie_manager.delete("sangsang_user")
-            st.rerun()
-            
-        st.divider()
         st.header("🔍 상세 필터")
         
         # 데이터가 정상적으로 로드되었는지 확인
@@ -828,14 +855,21 @@ def view_write(df):
         # 메타데이터 입력 (학년도, 시기)
         c1, c2 = st.columns(2)
         with c1:
-            years_options = [str(y) for y in range(2023, 2031)]
-            selected_years = st.multiselect("학년도 (다중 선택)", years_options)
+            # 학년도 범위 확장 (2018 ~ 2035)
+            years_options = [str(y) for y in range(2018, 2036)]
+            selected_years = st.multiselect("학년도 (다중 선택)", years_options, placeholder="학년도를 선택하거나 입력하세요")
         with c2:
             months_options = [f"{i}월" for i in range(1, 13)]
             selected_months = st.multiselect("업무 시기 (다중 선택)", months_options)
 
-        # 태그 입력 (해시태그 스타일)
-        tag_input = st.text_input("태그 입력 (예: #현장체험 #안전)", placeholder="#태그1 #태그2 (해시태그로 입력)")
+        # 태그 입력 (기존 태그 선택 + 직접 입력)
+        st.markdown("##### 🏷️ 태그 입력")
+        t1, t2 = st.columns([1, 1])
+        with t1:
+            all_existing_tags = get_all_unique_tags(df)
+            selected_existing_tags = st.multiselect("기존 태그 선택 (검색 가능)", all_existing_tags, placeholder="태그를 검색하세요")
+        with t2:
+            new_tag_input = st.text_input("직접 입력 (새로운 태그)", placeholder="#태그 (자동으로 #이 붙습니다)")
         
         st.info("ℹ️ '내용' 입력란에는 텍스트만 입력 가능합니다.")
         content = st.text_area("내용", height=300)
@@ -870,7 +904,11 @@ def view_write(df):
                 related_ids_str = ",".join(related_posts)
                 years_str = ", ".join(selected_years)
                 months_str = ", ".join(selected_months)
-                tags_str = process_tags_input(tag_input)
+                
+                # 태그 합치기 (선택된 태그 + 직접 입력 태그)
+                manual_tags_str = process_tags_input(new_tag_input)
+                final_tags_list = list(set(selected_existing_tags + manual_tags_str.split()))
+                tags_str = " ".join(final_tags_list)
                 
                 # 순서: 작성일, 작성자, 제목, 내용, 파일링크, 연관글ID, 이미지경로, 학년도, 업무시기, 태그
                 row_data = [timestamp, st.session_state.username, title, content, file_info_json, related_ids_str, "", years_str, months_str, tags_str]
@@ -906,14 +944,30 @@ def view_edit(df):
         
         c1, c2 = st.columns(2)
         with c1:
-            years_options = [str(y) for y in range(2023, 2031)]
-            new_years = st.multiselect("학년도", years_options, default=cur_years)
+             # 학년도 범위 확장 (2018 ~ 2035)
+            years_options = [str(y) for y in range(2018, 2036)]
+            new_years = st.multiselect("학년도", years_options, default=cur_years, placeholder="학년도를 선택하거나 입력하세요")
         with c2:
             months_options = [f"{i}월" for i in range(1, 13)]
             new_months = st.multiselect("업무 시기", months_options, default=cur_months)
 
-        # 태그 수정
-        new_tags_input = st.text_input("태그 수정", value=current_post['태그'])
+        # 태그 수정 (기존 태그 선택 + 직접 입력)
+        st.markdown("##### 🏷️ 태그 수정")
+        
+        # 현재 태그를 리스트로 변환
+        current_tags_list = current_post['태그'].split() if current_post['태그'] else []
+        all_existing_tags = get_all_unique_tags(df)
+        
+        # 현재 태그가 전체 목록에 없으면 추가 (옵션에 있어야 default로 설정 가능)
+        for t in current_tags_list:
+            if t not in all_existing_tags:
+                all_existing_tags.append(t)
+        
+        t1, t2 = st.columns([1, 1])
+        with t1:
+            selected_existing_tags = st.multiselect("태그 선택/삭제", sorted(list(set(all_existing_tags))), default=current_tags_list)
+        with t2:
+            new_tag_input = st.text_input("새로운 태그 추가 (직접 입력)", placeholder="#태그")
         
         st.info("ℹ️ '내용' 입력란에는 텍스트만 입력 가능합니다.")
         new_content = st.text_area("내용", value=current_post['내용'], height=300)
@@ -989,7 +1043,11 @@ def view_edit(df):
                 related_ids_str = ",".join(new_related_posts)
                 years_str = ", ".join(new_years)
                 months_str = ", ".join(new_months)
-                tags_str = process_tags_input(new_tags_input)
+                
+                # 태그 합치기
+                manual_tags_str = process_tags_input(new_tag_input)
+                final_tags_list = list(set(selected_existing_tags + manual_tags_str.split()))
+                tags_str = " ".join(final_tags_list)
                 
                 # 순서: 작성일, 작성자, 제목, 내용, 파일링크, 연관글ID, 이미지경로, 학년도, 업무시기, 태그
                 row_data = [timestamp, st.session_state.username, new_title, new_content, final_file_json, related_ids_str, "", years_str, months_str, tags_str]
@@ -1248,6 +1306,9 @@ def main():
     if not st.session_state.logged_in:
         login_page(cookie_manager)
         return
+
+    # 공통 사이드바 (홈, 로그아웃 등)
+    render_sidebar_header(cookie_manager)
 
     # 데이터 로드
     df = fetch_sheet_data()
