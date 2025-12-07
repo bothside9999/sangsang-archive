@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import os
 import math
 import json
@@ -292,7 +292,7 @@ def login_page(cookie_manager):
                     st.session_state.username = username
                     
                     # 쿠키 저장 (7일 유지)
-                    cookie_manager.set("sangsang_user", username, expires_at=datetime.now().timestamp() + 86400 * 7)
+                    cookie_manager.set("sangsang_user", username, expires_at=datetime.now() + timedelta(days=7))
                     
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
@@ -461,7 +461,12 @@ def fetch_sheet_data():
             
         all_values = sheet.get_all_values()
         
-        # 데이터가 없거나 헤더만 있는 경우
+        # 데이터가 아예 없는 경우 (헤더 복구)
+        if len(all_values) < 1:
+            sheet.append_row(EXPECTED_COLS)
+            return empty_df
+            
+        # 헤더만 있고 데이터는 없는 경우
         if len(all_values) < 2:
              return empty_df
 
@@ -508,6 +513,11 @@ def delete_post(title):
         sheet = client.open_by_url(SHEET_URL).sheet1
         cell = sheet.find(str(title))
         
+        # 헤더(1행) 삭제 방지
+        if cell.row <= 1:
+            st.error("삭제할 수 없는 항목입니다.")
+            return False
+
         # 삭제 전 첨부파일 정보 확인 및 삭제
         row_values = sheet.row_values(cell.row)
         # 파일링크는 5번째 컬럼 (인덱스 4)
