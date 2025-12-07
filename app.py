@@ -1212,7 +1212,12 @@ def view_graph(df):
             
             edges.append(Edge(source=post_id, target=tag, color="#EAEDED"))
 
-    config = Config(width="100%", height=600, directed=False, physics=True, hierarchy=False)
+    # 화면 높이 조절 (기기별 대응)
+    with st.expander("🔧 그래프 높이 조절 (모바일/태블릿/PC)", expanded=False):
+        graph_height = st.slider("화면 높이 (픽셀)", min_value=400, max_value=2000, value=1000, step=50, help="기기 화면 크기에 맞춰 그래프의 세로 길이를 조절하세요.")
+
+    # 그래프 설정
+    config = Config(width="100%", height=graph_height, directed=False, physics=True, hierarchy=False)
     
     return_value = agraph(nodes=nodes, edges=edges, config=config)
     
