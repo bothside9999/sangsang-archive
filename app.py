@@ -302,9 +302,6 @@ def login_page(cookie_manager):
                     # 만료 시간을 지정하지 않으면 브라우저/서버 시간차 문제(Timezone)를 원천 차단 가능
                     cookie_manager.set("sangsang_user", username)
                     
-                    # 브라우저가 쿠키를 처리할 시간을 확보 (매우 중요)
-                    time.sleep(1)
-                    
                     st.success(f"환영합니다, {username}님!")
                     st.rerun()
                 else:
