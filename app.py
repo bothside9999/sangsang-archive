@@ -682,6 +682,10 @@ def render_sidebar_header(cookie_manager):
             cookie_manager.delete("sangsang_user")
             st.rerun()
             
+        if st.button("🔄 데이터 새로고침", use_container_width=True, help="구글 시트에서 직접 수정한 내용을 즉시 반영합니다."):
+            fetch_sheet_data.clear()
+            st.rerun()
+            
         st.divider()
 
 def view_list(df, cookie_manager):
